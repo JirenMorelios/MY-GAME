@@ -32,6 +32,23 @@ CALC_FILL = PatternFill("solid", fgColor="F2F2F2")
 thin = Side(style="thin", color="BFBFBF")
 BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
 EUR = '#,##0.00 €;-#,##0.00 €;"-"'
+
+
+def total_row(ws, row, label_col, first, last, sum_cols):
+    """Linha de TOTAL no fundo da tabela. SUBTOTAL(109) respeita os filtros aplicados."""
+    top = Side(style="double", color="1F3864")
+    fill = PatternFill("solid", fgColor="D9E1F2")
+    c = ws[f"{label_col}{row}"]
+    c.value = "TOTAL"
+    for col in sum_cols:
+        ws[f"{col}{row}"] = f"=SUBTOTAL(109,{col}{first}:{col}{last})"
+        ws[f"{col}{row}"].number_format = '#,##0.00 €;-#,##0.00 €;"-"'
+    end = max(ws.max_column, 2)
+    for j in range(1, end + 1):
+        cell = ws.cell(row=row, column=j)
+        cell.font = Font(name="Arial", size=10, bold=True)
+        cell.fill = fill
+        cell.border = Border(top=top, bottom=thin, left=thin, right=thin)
 DATE = "DD/MM/YYYY"
 PCT = "0%"
 
@@ -108,6 +125,8 @@ for r in range(2, GERAL_ROWS + 2):
     g[f"{K}{r}"] = f'=IF({I}{r}="","",{I}{r}*{J}{r})'
     g[f"{C['Valor com IVA']}{r}"] = f'=IF({I}{r}="","",{I}{r}+N({K}{r}))'
 g.freeze_panes = "B2"
+total_row(g, GERAL_ROWS + 2, "A", 2, GERAL_ROWS + 1,
+          [C["Preço / Valor"], C["IVA"], C["Valor com IVA"]])
 g.auto_filter.ref = f"A1:{L(NC)}{GERAL_ROWS + 1}"
 g[f"{J}1"].comment = Comment(
     "Escreva a taxa de IVA da linha (ex.: 23%). O IVA e o Valor com IVA "
@@ -239,6 +258,7 @@ def view_sheet(title, label, filter_head, value_formula, list_name=None):
             if fmt:
                 c.number_format = fmt
     ws.freeze_panes = f"C{F0}"
+    total_row(ws, last + 1, "B", F0, last, ["J", "L", "M"])
     ws.auto_filter.ref = f"A{HR}:{L(NC + 1)}{last}"
     add_status_cf(ws, f"B{F0}:{L(NC + 1)}{last}", "Q", "P", F0)
     return ws
@@ -346,6 +366,7 @@ txt = [
     ("5. Estado do Pagamento: Pago (verde), Por pagar (amarelo), Parcial (laranja), Em atraso (vermelho).", BASE),
     ("   Uma linha 'Por pagar' ou 'Parcial' com o prazo de pagamento já ultrapassado também fica a vermelho.", BASE),
     ("6. Datas no formato DD/MM/AAAA. Valores em euros (€).", BASE),
+    ("   No fundo de cada tabela há uma linha TOTAL (Valor, IVA e Valor com IVA). Atalho: Ctrl+End. Se filtrar, o total soma só as linhas visíveis.", BASE),
     ("7. Informação ilegível nas folhas em papel: escreva 'REVER' na coluna Observações em vez de adivinhar.", BASE),
     ("", BASE),
     ("Correspondência com as folhas em papel:", BOLD),
